@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {loadData} from './data';
+import {loadData,loadStaffDirectory} from './data';
 import {supabase} from './supabase';
 const name=(data,id)=>{const p=data.person.find(p=>p.personid===id);return p?`${p.firstname} ${p.lastname}`:`Person #${id}`};
 const fields={
@@ -21,9 +21,25 @@ const appointmentClients=(data,id)=>data.scheduledfor.filter(s=>s.appointmentid=
 export function AppointmentInformation({data,appointments}) {
  return <Table headers={['Appointment ID','Date/time (database local time)','Minutes','Clients','Counselor','Scheduled by','Room']} rows={appointments.map(a=>[a.appointmentid,a.appointmenttime?.replace('T',' '),a.duration,appointmentClients(data,a.appointmentid),personLabel(data,a.counselorid),personLabel(data,a.employeeid),roomLabel(data,a.roomnumber)])}/>;
 }
+const dollars=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+export const formatWage=value=>value==null||value===''||!Number.isFinite(Number(value))?'Not available':dollars.format(Number(value));
+const supervisorLabel=(data,employee)=>{
+ if(employee.supervisorid==null)return 'None';
+ const supervisor=data.employee.find(e=>e.personid===employee.supervisorid);
+ const person=supervisor&&data.person.find(p=>p.personid===supervisor.personid);
+ return person?personLabel(data,person.personid):`Not available (#${employee.supervisorid})`;
+};
+export function StaffDirectoryView({data}) {
+ return data.employee.length?<Table headers={['Employee','Reports to']} rows={data.employee.map(e=>[personLabel(data,e.personid),supervisorLabel(data,e)])}/>:<p className="muted">No staff directory entries are available with your current access.</p>;
+}
+export function StaffDirectory({role}) {
+ const [data,setData]=useState(null),[error,setError]=useState(false),[revision,setRevision]=useState(0);
+ useEffect(()=>{let active=true;setData(null);setError(false);loadStaffDirectory(role).then(d=>{if(active)setData(d)}).catch(()=>{if(active)setError(true)});return()=>{active=false}},[role,revision]);
+ return <section className="panel"><h2>Staff Directory</h2>{error?<p role="alert">Staff directory is unavailable with your current access or connection. <button className="secondary" onClick={()=>setRevision(n=>n+1)}>Retry</button></p>:data?<StaffDirectoryView data={data}/>:<p role="status">Loading staff directory…</p>}</section>;
+}
 export function EmployeeInformation({data,role}) {
  if(role!=='admin')return null;
- return <section className="panel"><h2>Employee Information</h2><Table headers={['Employee name','Person ID','Wage']} rows={data.employee.map(e=>[name(data,e.personid),e.personid,e.wage])}/></section>;
+ return <section className="panel"><h2>Employee Information</h2><Table headers={['Employee name','Person ID','Wage ($)','Supervisor']} rows={data.employee.map(e=>[name(data,e.personid),e.personid,formatWage(e.wage),supervisorLabel(data,e)])}/></section>;
 }
 export default function Workspace({page,role}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[search,setSearch]=useState(''),[selected,setSelected]=useState(''),[revision,setRevision]=useState(0);

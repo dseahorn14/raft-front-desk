@@ -36,3 +36,27 @@ export async function loadData(role) {
  }));
  return Object.fromEntries(entries);
 }
+
+// Home uses a separate, wage-free query, even when the signed-in user is Admin.
+export async function loadStaffDirectory(role) {
+ if(!['admin','scheduler','counselor'].includes(role)) throw new Error('Staff access could not be verified.');
+ const employee=[];
+ for(let from=0;;from+=500){
+  const {data,error}=await supabase.from('employee').select('personid,supervisorid').order('personid').range(from,from+499);
+  if(error)throw new Error('Staff directory access is unavailable.');
+  employee.push(...data.map(e=>({personid:e.personid,supervisorid:e.supervisorid})));
+  if(data.length<500)break;
+ }
+ const person=[];
+ const ids=[...new Set(employee.map(e=>e.personid))];
+ for(let start=0;start<ids.length;start+=100){
+  const batch=ids.slice(start,start+100);
+  for(let from=0;;from+=500){
+   const {data,error}=await supabase.from('person').select('personid,firstname,lastname').in('personid',batch).order('personid').range(from,from+499);
+   if(error)throw new Error('Staff directory names are unavailable.');
+   person.push(...data.map(p=>({personid:p.personid,firstname:p.firstname,lastname:p.lastname})));
+   if(data.length<500)break;
+  }
+ }
+ return {employee,person};
+}

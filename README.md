@@ -86,3 +86,11 @@ Run `node --test tests/access-and-details.test.mjs` and `npm run build`. Tests u
 4. On a designated test record, save an authorized change and confirm the success message, then refresh records. A rejected save must show an explicit error and no success message. Do not use production records for write tests.
 
 Exactly four navigation screens remain: Home, Client Lookup, Dashboard, and Add/Edit Record. No schema, authentication, permission, or database record changes are part of this update.
+
+### Staff directory and wage display
+
+Home now includes a compact Staff Directory with employee names/IDs and reporting relationships. It uses separate explicit queries for `employee.personid,supervisorid` and the names of visible employees in `person`; it never requests wages, even for Admin. Existing access restrictions can produce an empty directory or an unavailable message with Retry. An inaccessible supervisor is labeled unavailable with the referenced ID; a null supervisor is shown as `None`.
+
+Admin Dashboard Employee Information formats wages as US currency with two decimal places under `Wage ($)` and resolves supervisors through the employee relationship and person names. No wage time unit is assumed. Missing wages display `Not available`, not zero. Scheduler and Counselor wage selections remain excluded.
+
+After Pages deployment, check Home's employee/reporting names for each role. As Admin, check Dashboard currency formatting and supervisor names/IDs, including `None` for employees without supervisors. In browser Network tools, verify Home requests only directory columns and Scheduler/Counselor requests never select wages. Recheck the existing four screens. Automated coverage includes formatting, null/restricted supervisors, wage-free directory queries/rendering, access failures, and existing role/query boundaries.
