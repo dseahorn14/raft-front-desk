@@ -46,8 +46,6 @@ Navigation uses React state rather than URL paths: every screen stays at `/raft-
 
 Import this repository as a Vite project. Build command: `npm run build`. Output directory: `dist`. Add the two VITE_SUPABASE environment variables in Vercel project settings before building. Navigation uses local React state and needs no server routing configuration.
 
-No follow-up feature-change commit has been created; this initial implementation awaits live role-specific testing.
-
 ## Connected database implementation
 
 The four screens now use explicit column lists in the existing `raft` schema. Role verification requires both `user.app_metadata.staff_role` and the matching JWT `role` (`raft_admin`, `raft_scheduler`, or `raft_counselor`). Unrecognized roles are blocked. Scheduler queries omit wages, notes, and assignments; counselor queries omit wages. Admin can edit all listed record types, scheduler can edit clients/people/rooms/scheduling, and counselors can edit only existing notes and assignments. There are no delete controls or delete calls.
@@ -94,3 +92,30 @@ Home now includes a compact Staff Directory with employee names/IDs and reportin
 Admin Dashboard Employee Information formats wages as US currency with two decimal places under `Wage ($)` and resolves supervisors through the employee relationship and person names. No wage time unit is assumed. Missing wages display `Not available`, not zero. Scheduler and Counselor wage selections remain excluded.
 
 After Pages deployment, check Home's employee/reporting names for each role. As Admin, check Dashboard currency formatting and supervisor names/IDs, including `None` for employees without supervisors. In browser Network tools, verify Home requests only directory columns and Scheduler/Counselor requests never select wages. Recheck the existing four screens. Automated coverage includes formatting, null/restricted supervisors, wage-free directory queries/rendering, access failures, and existing role/query boundaries.
+
+## AI Development Process
+
+### AI tool used
+
+OpenAI Codex assisted with implementing, reviewing, testing, and documenting the RAFT Front Desk website and its GitHub Pages deployment.
+
+### Initial prompt
+
+The original request was to build a four-screen RAFT front-desk website connected to the existing Supabase database. The screens were Home, Client Lookup, Dashboard, and Add/Edit Record. The website needed staff authentication and role-based access for Admin, Scheduler, and Counselor while respecting existing database relationships and permissions. This is a summary of the request, not an exact quotation of the original prompt.
+
+### What needed fixing
+
+Database connectivity and authorization needed investigation during development. The cloud environment initially blocked the Supabase hostname; its updated configuration allowed connectivity checks. Later, the deployed website allowed sign-in but showed zero clients, appointments, and rooms even though records existed in SQL Editor. Investigation checked schema selection, JWT role expectations, and query error handling. The frontend selected the `raft` schema and surfaced failed queries rather than converting errors into empty results. Row-level security filtering or a different deployed project remained possible explanations; the exact authenticated permission issue was not confirmed by those checks, and no database permission or authentication changes were made during the investigation.
+
+The initial appointment presentation also lacked enough relationship details: staff needed to see every linked client, counselor names, the employee who scheduled an appointment, and room names rather than relying on IDs alone. Role-specific information needed refinement so Admin could see useful employee wage information without requesting or exposing wages to Scheduler or Counselor. Scheduler queries also needed to continue excluding appointment notes and client assignments, while Counselor editing remained limited to permitted notes and assignments.
+
+### Changes after the initial implementation
+
+- **Appointment details:** Added all associated clients with full names and client IDs using `scheduledfor`, plus counselor names/IDs, `Scheduled by` employee names/IDs, and room names/numbers. These details make appointments easier to understand without manually matching database IDs, while preserving appointment editing and existing client/family lookup.
+- **Admin employee information:** Added an Admin-only Employee Information section to the existing Dashboard. Explicit column selections retrieve wages only for Admin, keeping sensitive information out of Scheduler and Counselor requests rather than merely hiding it in the interface.
+- **Currency formatting:** Formatted wages as US currency with two decimal places under `Wage ($)`. No hourly unit was assumed because the repository documentation did not confirm one. This makes amounts easier to read consistently.
+- **Supervisor relationships:** Resolved supervisors through `employee.supervisorid`, `employee.personid`, and the `person` table, displaying full names and IDs, `None` for no supervisor, and an unavailable label when details cannot be accessed. This clarifies reporting relationships without changing records.
+- **Home Staff Directory:** Added a compact directory of employee names and reporting relationships using separate wage-free queries for every role. It helps staff identify reporting lines while handling restricted access gracefully and retaining exactly four screens.
+- **Feedback and validation:** Improved record-save success and error messages and added automated tests for relationship displays, currency formatting, restricted information, and role-specific queries. Production builds were run before pushing the feature updates. These checks support usability and frontend correctness; live database authorization still requires verification with authorized staff sessions.
+
+The follow-up changes were committed after the original implementation, preserving the original `a5d5baa` commit in repository history. They retained authentication, Dashboard statistics, family roles, and Add/Edit Record functionality without adding DELETE operations, tables, migrations, or changes to existing database records.
