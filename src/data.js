@@ -16,6 +16,7 @@ export function staffRole(session) {
  } catch { return null; }
 }
 export async function loadData(role) {
+ if(!['admin','scheduler','counselor'].includes(role)) throw new Error('Staff access could not be verified.');
  const entries=await Promise.all(Object.entries(columns).map(async ([table, base])=>{
   let selected=base;
   if(table==='employee' && role==='admin') selected+=',wage';

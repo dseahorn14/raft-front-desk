@@ -71,3 +71,18 @@ Use the three existing staff accounts with your own passwords. Do not put passwo
 Live authenticated access and writes have not been verified by the developer: account passwords were not provided, and this cloud instance initially denied the Supabase hostname at its network proxy. A successful build does not establish database authorization correctness. No database schema changes or migrations were executed.
 
 Developer validation: production build passed. Browser tests with simulated Supabase responses passed for all three roles, covering client/family lookup, statistics rendering, editor restrictions, explicit role-specific query columns, mobile layout, and a counselor notes-only update payload. These simulations are not evidence that live PostgreSQL grants are correct.
+
+## Appointment and employee information
+
+Dashboard includes appointment details with all clients linked through `raft.scheduledfor`, counselor and scheduling employee names/IDs, and room names/numbers. Client Lookup shows the same relationship labels alongside its existing appointment and family details. Selecting an existing appointment in Add/Edit Record shows its relationship summary above the unchanged editor.
+
+Employee Information appears on Dashboard only for Admin. The loader explicitly selects `employee.wage` only for Admin; Scheduler queries omit wages, notes, and assignments, and Counselor queries omit wages. Unknown staff roles are rejected before querying. Existing database grants and policies remain the final authorization boundary.
+
+Run `node --test tests/access-and-details.test.mjs` and `npm run build`. Tests use synthetic fixtures and mocked queries, without live records or writes. Manually verify:
+
+1. Admin: Dashboard statistics are unchanged; appointment details show every linked client and correct staff/room labels; Employee Information shows names, person IDs, and wages.
+2. Scheduler: no Employee Information or wages; inspect Network requests to confirm no wage, notes, or assignment columns are selected. Appointment scheduling and client/family lookup remain available.
+3. Counselor: no wages; only existing appointment notes and client assignments can be edited. Scheduling fields remain disabled and new scheduling records cannot be created.
+4. On a designated test record, save an authorized change and confirm the success message, then refresh records. A rejected save must show an explicit error and no success message. Do not use production records for write tests.
+
+Exactly four navigation screens remain: Home, Client Lookup, Dashboard, and Add/Edit Record. No schema, authentication, permission, or database record changes are part of this update.
